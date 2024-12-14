@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strconv"
+	"path/filepath"
 	"math"
 	"a21hc3NpZ25tZW50/service"
 	"github.com/gorilla/mux"
@@ -43,37 +44,38 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
-		err := r.ParseMultipartForm(10 << 20)
-		if err != nil {
-			http.Error(w, "Error parsing form", http.StatusBadRequest)
-			return
-		}
+		err := r.ParseMultipartForm(10 << 20) // 10 MB maks
+        if err != nil {
+            http.Error(w, "Error parsing form", http.StatusBadRequest)
+            return
+        }
 
-		file, header, err := r.FormFile("file")
-		if err != nil {
-			http.Error(w, "Error retrieving the file", http.StatusBadRequest)
-			return
-		}
-		defer file.Close()
+        file, header, err := r.FormFile("file")
+        if err != nil {
+            http.Error(w, "Error retrieving the file", http.StatusBadRequest)
+            return
+        }
+        defer file.Close()
 
-		fileBytes, err := ioutil.ReadAll(file)
-		if err != nil {
-			http.Error(w, "Error reading file", http.StatusInternalServerError)
-			return
-		}
+        // Cek ekstensi file
+        filename := header.Filename
+        ext := filepath.Ext(filename)
+        if ext != ".csv" {
+            http.Error(w, "Only CSV files are supported", http.StatusBadRequest)
+            return
+        }
 
-		processedData, err := fileService.ProcessFile(string(fileBytes))
-		if err != nil {
-			http.Error(w, "Error processing file: "+err.Error(), http.StatusBadRequest)
-			return
-		}
+        fileBytes, err := ioutil.ReadAll(file)
+        if err != nil {
+            http.Error(w, "Error reading file", http.StatusInternalServerError)
+            return
+        }
 
-		filename := "uploaded_" + header.Filename
-		err = fileService.Repo.SaveFile(filename, fileBytes)
-		if err != nil {
-			http.Error(w, "Error saving file", http.StatusInternalServerError)
-			return
-		}
+        processedData, err := fileService.ProcessFile(string(fileBytes))
+        if err != nil {
+            http.Error(w, "Error processing file: "+err.Error(), http.StatusBadRequest)
+            return
+        }
 
 		// Analisis konsumsi energi
 		highestConsumption := make(map[string]string)
@@ -100,7 +102,6 @@ func main() {
 			}
 		}
 
-		// Tambahkan analisis untuk setiap sumber energi
 		analysis := "Energy Consumption Analysis:\n"
 		for _, energySource := range []string{"Electric", "Solar", "Battery"} {
 			if maxConsumption[energySource] > 0 {

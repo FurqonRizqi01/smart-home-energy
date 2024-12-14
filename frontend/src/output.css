@@ -525,21 +525,6 @@ video {
     max-width: 1536px;
   }
 }
-.absolute {
-  position: absolute;
-}
-.relative {
-  position: relative;
-}
-.left-0 {
-  left: 0px;
-}
-.right-0 {
-  right: 0px;
-}
-.top-full {
-  top: 100%;
-}
 .mx-auto {
   margin-left: auto;
   margin-right: auto;
@@ -553,8 +538,8 @@ video {
 .mb-6 {
   margin-bottom: 1.5rem;
 }
-.mt-4 {
-  margin-top: 1rem;
+.mb-8 {
+  margin-bottom: 2rem;
 }
 .block {
   display: block;
@@ -564,9 +549,6 @@ video {
 }
 .inline-flex {
   display: inline-flex;
-}
-.hidden {
-  display: none;
 }
 .h-6 {
   height: 1.5rem;
@@ -592,11 +574,14 @@ video {
 .flex-grow {
   flex-grow: 1;
 }
-.list-inside {
-  list-style-position: inside;
+@keyframes pulse {
+
+  50% {
+    opacity: .5;
+  }
 }
-.list-disc {
-  list-style-type: disc;
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 .flex-col {
   flex-direction: column;
@@ -705,9 +690,6 @@ video {
 .p-3 {
   padding: 0.75rem;
 }
-.p-4 {
-  padding: 1rem;
-}
 .p-6 {
   padding: 1.5rem;
 }
@@ -742,13 +724,16 @@ video {
 .text-left {
   text-align: left;
 }
+.text-center {
+  text-align: center;
+}
 .text-2xl {
   font-size: 1.5rem;
   line-height: 2rem;
 }
-.text-3xl {
-  font-size: 1.875rem;
-  line-height: 2.25rem;
+.text-4xl {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
 }
 .text-lg {
   font-size: 1.125rem;
@@ -901,19 +886,9 @@ code {
   background-color: rgb(21 128 61 / var(--tw-bg-opacity, 1));
 }
 
-.hover\:bg-yellow-600:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(202 138 4 / var(--tw-bg-opacity, 1));
-}
-
 .hover\:bg-yellow-700:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(161 98 7 / var(--tw-bg-opacity, 1));
-}
-
-.hover\:text-gray-200:hover {
-  --tw-text-opacity: 1;
-  color: rgb(229 231 235 / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-purple-400:hover {
@@ -1014,14 +989,6 @@ code {
 
 @media (min-width: 768px) {
 
-  .md\:flex {
-    display: flex;
-  }
-
-  .md\:hidden {
-    display: none;
-  }
-
   .md\:flex-row {
     flex-direction: row;
   }
@@ -1044,5 +1011,15 @@ code {
   .md\:py-6 {
     padding-top: 1.5rem;
     padding-bottom: 1.5rem;
+  }
+
+  .md\:text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+
+  .md\:text-5xl {
+    font-size: 3rem;
+    line-height: 1;
   }
 }

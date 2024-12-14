@@ -13,7 +13,7 @@ type FileService struct {
 
 func (s *FileService) ProcessFile(fileContent string) (map[string][]string, error) {
     if fileContent == "" {
-        return nil, fmt.Errorf("CSV file is empty")
+        return nil, fmt.Errorf("file is empty")
     }
 
     reader := csv.NewReader(strings.NewReader(fileContent))

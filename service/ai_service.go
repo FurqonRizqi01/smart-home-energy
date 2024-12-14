@@ -18,14 +18,33 @@ type AIService struct {
 }
 
 func (s *AIService) AnalyzeData(table map[string][]string, query, token string) (string, error) {
+    // Validasi input
     if len(table) == 0 {
         return "", fmt.Errorf("table is empty")
     }
 
-    reqBody := model.AIRequest{
-        Inputs: model.Inputs{
-            Table: table,
-            Query: query,
+    processedTable := make([][]string, 0)
+    
+    headers := make([]string, 0)
+    for header := range table {
+        headers = append(headers, header)
+    }
+    processedTable = append(processedTable, headers)
+
+    // Tambahkan data
+    rowCount := len(table[headers[0]])
+    for i := 0; i < rowCount; i++ {
+        row := make([]string, len(headers))
+        for j, header := range headers {
+            row[j] = table[header][i]
+        }
+        processedTable = append(processedTable, row)
+    }
+
+    reqBody := map[string]interface{}{
+        "inputs": map[string]interface{}{
+            "table": processedTable,
+            "query": query,
         },
     }
 
@@ -49,7 +68,8 @@ func (s *AIService) AnalyzeData(table map[string][]string, query, token string) 
     defer resp.Body.Close()
 
     if resp.StatusCode != http.StatusOK {
-        return "", fmt.Errorf("AI model returned non-OK status: %d", resp.StatusCode)
+        body, _ := ioutil.ReadAll(resp.Body)
+        return "", fmt.Errorf("AI model returned non-OK status: %d, response: %s", resp.StatusCode, string(body))
     }
 
     body, err := ioutil.ReadAll(resp.Body)
@@ -57,25 +77,45 @@ func (s *AIService) AnalyzeData(table map[string][]string, query, token string) 
         return "", err
     }
 
-    fmt.Println("Raw Response:", string(body))
+    fmt.Println("Raw Tapas Response:", string(body))
 
-    var tapasResp model.TapasResponse
+    var tapasResp map[string]interface{}
     err = json.Unmarshal(body, &tapasResp)
     if err != nil {
         return "", fmt.Errorf("failed to unmarshal response: %v", err)
     }
 
-    if len(tapasResp.Cells) > 0 {
-        return tapasResp.Cells[0], nil
+    var answer string
+    switch v := tapasResp["answer"].(type) {
+    case string:
+        answer = v
+    case []interface{}:
+        if len(v) > 0 {
+            answer = fmt.Sprintf("%v", v[0])
+        }
     }
 
-    return "", fmt.Errorf("no response from AI model")
+    if answer == "" {
+        if cells, ok := tapasResp["cells"].([]interface{}); ok && len(cells) > 0 {
+            answer = fmt.Sprintf("%v", cells[0])
+        }
+    }
+
+    if answer == "" {
+        answer = "No specific answer could be extracted from the response."
+    }
+
+    return answer, nil
 }
 
 
 func (s *AIService) ChatWithAI(context, query, token string) (model.ChatResponse, error) {
-    reqBody := map[string]string{
+    reqBody := map[string]interface{}{
         "inputs": context + " " + query,
+        "parameters": map[string]interface{}{
+            "max_new_tokens": 500,  // Tambahkan parameter ini
+            "return_full_text": false,
+        },
     }
 
     jsonBody, err := json.Marshal(reqBody)

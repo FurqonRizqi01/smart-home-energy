@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from "react";
 import axios from "axios";
+import { motion } from "framer-motion";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 
-function DataAnalysisChatbot() {
+function App() {
   const [file, setFile] = useState(null);
   const [tapasQuery, setTapasQuery] = useState("");
   const [miniChatQuery, setMiniChatQuery] = useState("");
@@ -14,13 +15,22 @@ function DataAnalysisChatbot() {
   // Fungsi untuk menangani perubahan file
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
-    setFile(selectedFile);
-    // Reset error dan response setiap kali file berubah
-    setErrorMessage("");
-    setResponse("");
-  };
+    const allowedTypes = ['text/csv', 'application/vnd.ms-excel'];
+    
+    if (selectedFile) {
+        if (!allowedTypes.includes(selectedFile.type)) {
+            setErrorMessage("Only CSV files are allowed!");
+            setFile(null);
+            return;
+        }
+        
+        setFile(selectedFile);
+        setErrorMessage("");
+        setResponse("");
+    }
+};
 
-  // Fungsi upload dengan error handling yang lebih baik
+  // Fungsi upload
   const handleUpload = useCallback(async () => {
     if (!file) {
       setErrorMessage("Please select a file first.");
@@ -34,7 +44,7 @@ function DataAnalysisChatbot() {
     const formData = new FormData();
     formData.append("file", file);
     
-    // Tambahkan query Tapas jika ada
+    //query Tapas
     if (tapasQuery) {
       formData.append("query", tapasQuery);
     }
@@ -44,10 +54,9 @@ function DataAnalysisChatbot() {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 30000 // 30 detik timeout
+        timeout: 30000
       });
       
-      // Gabungkan response dengan struktur yang lebih informatif
       const fullResponse = 
         `📊 File Analysis:\n${res.data.analysis || 'No analysis available'}\n\n` +
         `🤖 AI Insights: ${res.data.aiResponse || res.data.answer || 'No additional insights'}`;
@@ -56,7 +65,6 @@ function DataAnalysisChatbot() {
     } catch (error) {
       console.error('Error uploading file:', error);
       
-      // Tangani berbagai tipe error
       if (error.response) {
         // Server responded with an error
         setErrorMessage(`Upload Error: ${error.response.data.message || 'Server error'}`);
@@ -72,7 +80,7 @@ function DataAnalysisChatbot() {
     }
   }, [file, tapasQuery]);
 
-  // Fungsi chat dengan error handling yang lebih komprehensif
+  // Fungsi chat
   const handleMiniChat = useCallback(async () => {
     const trimmedQuery = miniChatQuery.trim();
     if (!trimmedQuery) {
@@ -85,13 +93,12 @@ function DataAnalysisChatbot() {
     
     try {
       const res = await axios.post("http://localhost:8080/chat", { 
-        context: "",  // Kosongkan context untuk pertanyaan general
+        context: "",
         query: trimmedQuery 
       }, {
-        timeout: 30000 // 30 detik timeout
+        timeout: 30000
       });
       
-      // Pastikan response penuh
       const fullResponse = `🤖 Mini Chat Response:\n${res.data.answer || 'No response received'}`;
       setResponse(fullResponse);
     } catch (error) {
@@ -110,7 +117,7 @@ function DataAnalysisChatbot() {
     }
   }, [miniChatQuery]);
 
-  // Reset fungsi untuk membersihkan state
+  // Reset fungsi
   const resetForm = () => {
     setFile(null);
     setTapasQuery("");
@@ -123,6 +130,19 @@ function DataAnalysisChatbot() {
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
       <main className="flex-grow container mx-auto px-4 py-8">
+      <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-4xl md:text-5xl font-bold text-yellow-600 mb-2 animate-pulse">
+            Welcome to SmartEnergy Hub!
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300">
+            Mengelola Energy, Mengelola Hidup!
+          </p>
+        </motion.div>
         <div className="max-w-4xl mx-auto">
           <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg overflow-hidden">
             <div className="p-6 md:p-8">
@@ -130,7 +150,6 @@ function DataAnalysisChatbot() {
                 AI Data Analysis Chatbot
               </h2>
 
-              {/* Error Message Section */}
               {errorMessage && (
                 <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
                   {errorMessage}
@@ -138,7 +157,6 @@ function DataAnalysisChatbot() {
               )}
 
               <div className="space-y-6">
-                {/* File Upload Section (sama seperti sebelumnya) */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Upload File
@@ -165,7 +183,6 @@ function DataAnalysisChatbot() {
                   </div>
                 </div>
 
-                {/* Tapas Query Section (sama seperti sebelumnya) */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Tapas AI Table Query
@@ -197,7 +214,6 @@ function DataAnalysisChatbot() {
                   </div>
                  </div>
 
-                {/* Mini Chat Section (sama seperti sebelumnya) */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Mini Chat AI General Query
@@ -231,7 +247,6 @@ function DataAnalysisChatbot() {
               </div>
             </div>
 
-            {/* Response Section (sama seperti sebelumnya) */}
             <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 md:px-8 md:py-6">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 Response
@@ -252,4 +267,4 @@ function DataAnalysisChatbot() {
   );
 }
 
-export default DataAnalysisChatbot;
+export default App;
