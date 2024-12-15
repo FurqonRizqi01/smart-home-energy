@@ -28,18 +28,39 @@ func (s *FileService) ProcessFile(fileContent string) (map[string][]string, erro
 
     headers := records[0]
     
-    result := make(map[string][]string)
-    for _, header := range headers {
-        result[header] = []string{}
+    columnMapping := map[string]string{
+        "Energy_Consumption (kWh)": "Energy_Consumption",
+        "Energy Consumption": "Energy_Consumption",
     }
 
+    result := make(map[string][]string)
+    
+    // Hanya tambahkan header yang ada di CSV
+    for _, header := range headers {
+        standardHeader := header
+        if mappedHeader, exists := columnMapping[header]; exists {
+            standardHeader = mappedHeader
+        }
+        result[standardHeader] = []string{}
+    }
+
+    // Isi data
     for i := 1; i < len(records); i++ {
-        if len(records[i]) != len(headers) {
-            return nil, fmt.Errorf("invalid CSV data: inconsistent number of columns")
+        if len(records[i]) > len(headers) {
+            return nil, fmt.Errorf("invalid CSV data: too many columns")
         }
 
         for j, header := range headers {
-            result[header] = append(result[header], records[i][j])
+            standardHeader := header
+            if mappedHeader, exists := columnMapping[header]; exists {
+                standardHeader = mappedHeader
+            }
+
+            if j < len(records[i]) {
+                result[standardHeader] = append(result[standardHeader], records[i][j])
+            } else {
+                result[standardHeader] = append(result[standardHeader], "")
+            }
         }
     }
 

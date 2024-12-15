@@ -113,7 +113,7 @@ func (s *AIService) ChatWithAI(context, query, token string) (model.ChatResponse
     reqBody := map[string]interface{}{
         "inputs": context + " " + query,
         "parameters": map[string]interface{}{
-            "max_new_tokens": 500,  // Tambahkan parameter ini
+            "max_new_tokens": 725,  // Tambahkan parameter ini
             "return_full_text": false,
         },
     }

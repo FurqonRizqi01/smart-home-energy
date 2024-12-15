@@ -133,7 +133,7 @@ function App() {
       <motion.div
           initial={{ opacity: 0, y: -50 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 1 }}
           className="text-center mb-8"
         >
           <h1 className="text-4xl md:text-5xl font-bold text-yellow-600 mb-2 animate-pulse">
