@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import axios from "axios";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -34,6 +34,7 @@ const markdownComponents = {
 };
 
 function App() {
+  const fileInputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [tapasQuery, setTapasQuery] = useState("");
   const [miniChatQuery, setMiniChatQuery] = useState("");
@@ -51,6 +52,7 @@ function App() {
         if (!allowedTypes.includes(selectedFile.type)) {
             setErrorMessage("Only CSV files are allowed!");
             setFile(null);
+            e.target.value = "";
             return;
         }
         
@@ -157,6 +159,9 @@ function App() {
 
   // Reset fungsi
   const resetForm = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     setFile(null);
     setTapasQuery("");
     setMiniChatQuery("");
@@ -200,11 +205,12 @@ function App() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Upload File
                   </label>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <input
+                      ref={fileInputRef}
                       type="file"
                       onChange={handleFileChange}
-                      className="block w-full text-sm text-gray-500 
+                      className="block min-w-0 flex-1 text-sm text-gray-500 
                         file:mr-4 file:py-2 file:px-4 
                         file:rounded-full file:border-0 
                         file:text-sm file:font-semibold 
@@ -212,9 +218,10 @@ function App() {
                         hover:file:bg-purple-100"
                     />
                     {file && (
-                      <button 
+                      <button
+                        type="button"
                         onClick={resetForm}
-                        className="text-red-500 hover:text-red-700"
+                        className="shrink-0 rounded-md border border-red-500 px-4 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-500 hover:text-white"
                       >
                         Clear
                       </button>
