@@ -1,14 +1,44 @@
 import React, { useState, useCallback } from "react";
 import axios from "axios";
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
+import remarkGfm from "remark-gfm";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+
+const markdownComponents = {
+  h1: ({ children }) => <h1 className="mt-6 mb-3 text-2xl font-bold text-gray-900 dark:text-white">{children}</h1>,
+  h2: ({ children }) => <h2 className="mt-6 mb-3 text-xl font-bold text-gray-900 dark:text-white">{children}</h2>,
+  h3: ({ children }) => <h3 className="mt-5 mb-2 text-lg font-semibold text-gray-900 dark:text-white">{children}</h3>,
+  p: ({ children }) => <p className="mb-4 break-words leading-7">{children}</p>,
+  strong: ({ children }) => <strong className="font-bold text-gray-900 dark:text-white">{children}</strong>,
+  ul: ({ children }) => <ul className="mb-4 list-disc space-y-1 pl-6">{children}</ul>,
+  ol: ({ children }) => <ol className="mb-4 list-decimal space-y-1 pl-6">{children}</ol>,
+  li: ({ children }) => <li className="break-words pl-1">{children}</li>,
+  blockquote: ({ children }) => (
+    <blockquote className="my-4 border-l-4 border-yellow-500 bg-gray-100 px-4 py-2 italic dark:bg-gray-700">{children}</blockquote>
+  ),
+  hr: () => <hr className="my-6 border-gray-300 dark:border-gray-600" />,
+  table: ({ children }) => (
+    <div className="my-5 max-w-full overflow-x-auto rounded-lg border border-gray-300 dark:border-gray-600">
+      <table className="w-full min-w-[640px] border-collapse text-left text-sm">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="bg-gray-200 dark:bg-gray-700">{children}</thead>,
+  th: ({ children }) => <th className="border-b border-r border-gray-300 px-4 py-3 font-semibold last:border-r-0 dark:border-gray-600">{children}</th>,
+  td: ({ children }) => <td className="border-b border-r border-gray-200 px-4 py-3 align-top last:border-r-0 dark:border-gray-700">{children}</td>,
+  pre: ({ children }) => <pre className="my-4 max-w-full overflow-x-auto rounded-lg bg-gray-950 p-4 text-sm text-gray-100">{children}</pre>,
+  code: ({ children }) => <code className="rounded bg-gray-200 px-1 py-0.5 text-sm dark:bg-gray-700">{children}</code>,
+  a: ({ children, href }) => <a className="text-blue-600 underline hover:text-blue-500 dark:text-blue-400" href={href} target="_blank" rel="noreferrer">{children}</a>,
+};
 
 function App() {
   const [file, setFile] = useState(null);
   const [tapasQuery, setTapasQuery] = useState("");
   const [miniChatQuery, setMiniChatQuery] = useState("");
   const [response, setResponse] = useState("");
+  const [aiContext, setAiContext] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -25,6 +55,7 @@ function App() {
         }
         
         setFile(selectedFile);
+        setAiContext("");
         setErrorMessage("");
         setResponse("");
     }
@@ -54,20 +85,24 @@ function App() {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 30000
+        timeout: 60000
       });
       
-      const fullResponse = 
-        `📊 File Analysis:\n${res.data.analysis || 'No analysis available'}\n\n` +
-        `🤖 AI Insights: ${res.data.aiResponse || res.data.answer || 'No additional insights'}`;
+      const fullResponse =
+        `## 📊 File Analysis\n\n${res.data.analysis || 'No analysis available'}\n\n---\n\n` +
+        `## 🤖 AI Insights\n\n${res.data.aiResponse || res.data.answer || 'No additional insights'}`;
       
+      setAiContext(res.data.context || "");
       setResponse(fullResponse);
     } catch (error) {
       console.error('Error uploading file:', error);
       
       if (error.response) {
         // Server responded with an error
-        setErrorMessage(`Upload Error: ${error.response.data.message || 'Server error'}`);
+        const serverMessage = typeof error.response.data === "string"
+          ? error.response.data
+          : error.response.data?.message;
+        setErrorMessage(`Upload Error: ${serverMessage || 'Server error'}`);
       } else if (error.request) {
         // Request made but no response received
         setErrorMessage("No response from server. Please check your connection.");
@@ -93,20 +128,23 @@ function App() {
     
     try {
       const res = await axios.post("http://localhost:8080/chat", { 
-        context: "",
+        context: aiContext,
         query: trimmedQuery 
       }, {
-        timeout: 30000
+        timeout: 60000
       });
       
-      const fullResponse = `🤖 Mini Chat Response:\n${res.data.answer || 'No response received'}`;
+      const fullResponse = `## 🤖 Mini Chat Response\n\n${res.data.answer || 'No response received'}`;
       setResponse(fullResponse);
     } catch (error) {
       console.error("Error querying chat:", error);
       
       // Detailed error handling
       if (error.response) {
-        setErrorMessage(`Chat Error: ${error.response.data.message || 'Server error'}`);
+        const serverMessage = typeof error.response.data === "string"
+          ? error.response.data
+          : error.response.data?.message;
+        setErrorMessage(`Chat Error: ${serverMessage || 'Server error'}`);
       } else if (error.request) {
         setErrorMessage("No response from server. Please check your connection.");
       } else {
@@ -115,7 +153,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [miniChatQuery]);
+  }, [aiContext, miniChatQuery]);
 
   // Reset fungsi
   const resetForm = () => {
@@ -123,6 +161,7 @@ function App() {
     setTapasQuery("");
     setMiniChatQuery("");
     setResponse("");
+    setAiContext("");
     setErrorMessage("");
   };
 
@@ -185,7 +224,7 @@ function App() {
 
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Tapas AI Table Query
+                    AI Question About CSV
                   </label>
                   <div className="flex items-center space-x-2">
                     <input
@@ -216,7 +255,7 @@ function App() {
 
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Mini Chat AI General Query
+                    Follow-up Chat {aiContext ? '(uses uploaded CSV)' : '(general)'}
                   </label>
                   <div className="flex items-center space-x-2">
                     <input
@@ -251,11 +290,18 @@ function App() {
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 Response
               </h3>
-              <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                    {response || 'Your response will appear here.'}
-                  </p>
+              <div className="min-w-0 bg-white dark:bg-gray-800 shadow rounded-lg">
+                <div className="min-w-0 max-w-full px-4 py-5 text-gray-700 dark:text-gray-300 sm:p-6">
+                  {response ? (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkBreaks]}
+                      components={markdownComponents}
+                    >
+                      {response}
+                    </ReactMarkdown>
+                  ) : (
+                    <p>Your response will appear here.</p>
+                  )}
                 </div>
               </div>
             </div>

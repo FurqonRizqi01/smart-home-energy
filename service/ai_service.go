@@ -2,11 +2,11 @@ package service
 
 import (
 	"a21hc3NpZ25tZW50/model"
-	"net/http"
-	"encoding/json"
 	"bytes"
-	"io/ioutil"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 )
 
 type HTTPClient interface {
@@ -18,143 +18,163 @@ type AIService struct {
 }
 
 func (s *AIService) AnalyzeData(table map[string][]string, query, token string) (string, error) {
-    // Validasi input
-    if len(table) == 0 {
-        return "", fmt.Errorf("table is empty")
-    }
+	// Validasi input
+	if len(table) == 0 {
+		return "", fmt.Errorf("table is empty")
+	}
 
-    processedTable := make([][]string, 0)
-    
-    headers := make([]string, 0)
-    for header := range table {
-        headers = append(headers, header)
-    }
-    processedTable = append(processedTable, headers)
+	processedTable := make([][]string, 0)
 
-    // Tambahkan data
-    rowCount := len(table[headers[0]])
-    for i := 0; i < rowCount; i++ {
-        row := make([]string, len(headers))
-        for j, header := range headers {
-            row[j] = table[header][i]
-        }
-        processedTable = append(processedTable, row)
-    }
+	headers := make([]string, 0)
+	for header := range table {
+		headers = append(headers, header)
+	}
+	processedTable = append(processedTable, headers)
 
-    reqBody := map[string]interface{}{
-        "inputs": map[string]interface{}{
-            "table": processedTable,
-            "query": query,
-        },
-    }
+	// Tambahkan data
+	rowCount := len(table[headers[0]])
+	for i := 0; i < rowCount; i++ {
+		row := make([]string, len(headers))
+		for j, header := range headers {
+			row[j] = table[header][i]
+		}
+		processedTable = append(processedTable, row)
+	}
 
-    jsonBody, err := json.Marshal(reqBody)
-    if err != nil {
-        return "", err
-    }
+	reqBody := map[string]interface{}{
+		"inputs": map[string]interface{}{
+			"table": processedTable,
+			"query": query,
+		},
+	}
 
-    req, err := http.NewRequest("POST", "https://api-inference.huggingface.co/models/google/tapas-base-finetuned-wtq", bytes.NewBuffer(jsonBody))
-    if err != nil {
-        return "", err
-    }
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
 
-    req.Header.Set("Authorization", "Bearer "+token)
-    req.Header.Set("Content-Type", "application/json")
+	req, err := http.NewRequest("POST", "https://api-inference.huggingface.co/models/google/tapas-base-finetuned-wtq", bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return "", err
+	}
 
-    resp, err := s.Client.Do(req)
-    if err != nil {
-        return "", err
-    }
-    defer resp.Body.Close()
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
 
-    if resp.StatusCode != http.StatusOK {
-        body, _ := ioutil.ReadAll(resp.Body)
-        return "", fmt.Errorf("AI model returned non-OK status: %d, response: %s", resp.StatusCode, string(body))
-    }
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
 
-    body, err := ioutil.ReadAll(resp.Body)
-    if err != nil {
-        return "", err
-    }
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return "", fmt.Errorf("AI model returned non-OK status: %d, response: %s", resp.StatusCode, string(body))
+	}
 
-    fmt.Println("Raw Tapas Response:", string(body))
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
 
-    var tapasResp map[string]interface{}
-    err = json.Unmarshal(body, &tapasResp)
-    if err != nil {
-        return "", fmt.Errorf("failed to unmarshal response: %v", err)
-    }
+	fmt.Println("Raw Tapas Response:", string(body))
 
-    var answer string
-    switch v := tapasResp["answer"].(type) {
-    case string:
-        answer = v
-    case []interface{}:
-        if len(v) > 0 {
-            answer = fmt.Sprintf("%v", v[0])
-        }
-    }
+	var tapasResp map[string]interface{}
+	err = json.Unmarshal(body, &tapasResp)
+	if err != nil {
+		return "", fmt.Errorf("failed to unmarshal response: %v", err)
+	}
 
-    if answer == "" {
-        if cells, ok := tapasResp["cells"].([]interface{}); ok && len(cells) > 0 {
-            answer = fmt.Sprintf("%v", cells[0])
-        }
-    }
+	var answer string
+	switch v := tapasResp["answer"].(type) {
+	case string:
+		answer = v
+	case []interface{}:
+		if len(v) > 0 {
+			answer = fmt.Sprintf("%v", v[0])
+		}
+	}
 
-    if answer == "" {
-        answer = "No specific answer could be extracted from the response."
-    }
+	if answer == "" {
+		if cells, ok := tapasResp["cells"].([]interface{}); ok && len(cells) > 0 {
+			answer = fmt.Sprintf("%v", cells[0])
+		}
+	}
 
-    return answer, nil
+	if answer == "" {
+		answer = "No specific answer could be extracted from the response."
+	}
+
+	return answer, nil
 }
 
-
 func (s *AIService) ChatWithAI(context, query, token string) (model.ChatResponse, error) {
-    reqBody := map[string]interface{}{
-        "inputs": context + " " + query,
-        "parameters": map[string]interface{}{
-            "max_new_tokens": 725,  // Tambahkan parameter ini
-            "return_full_text": false,
-        },
-    }
+	messages := make([]map[string]string, 0, 2)
+	if context != "" {
+		messages = append(messages, map[string]string{
+			"role":    "system",
+			"content": context,
+		})
+	}
+	messages = append(messages, map[string]string{
+		"role":    "user",
+		"content": query,
+	})
 
-    jsonBody, err := json.Marshal(reqBody)
-    if err != nil {
-        return model.ChatResponse{}, err
-    }
+	reqBody := map[string]interface{}{
+		"model":      "Qwen/Qwen3-4B-Instruct-2507:cheapest",
+		"messages":   messages,
+		"max_tokens": 512,
+		"stream":     false,
+	}
 
-    req, err := http.NewRequest("POST", "https://api-inference.huggingface.co/models/microsoft/Phi-3.5-mini-instruct", bytes.NewBuffer(jsonBody))
-    if err != nil {
-        return model.ChatResponse{}, err
-    }
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return model.ChatResponse{}, err
+	}
 
-    req.Header.Set("Authorization", "Bearer "+token)
-    req.Header.Set("Content-Type", "application/json")
+	req, err := http.NewRequest("POST", "https://router.huggingface.co/v1/chat/completions", bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return model.ChatResponse{}, err
+	}
 
-    resp, err := s.Client.Do(req)
-    if err != nil {
-        return model.ChatResponse{}, err
-    }
-    defer resp.Body.Close()
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
 
-    if resp.StatusCode != http.StatusOK {
-        return model.ChatResponse{}, fmt.Errorf("AI model returned non-OK status: %d", resp.StatusCode)
-    }
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return model.ChatResponse{}, err
+	}
+	defer resp.Body.Close()
 
-    body, err := ioutil.ReadAll(resp.Body)
-    if err != nil {
-        return model.ChatResponse{}, err
-    }
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return model.ChatResponse{}, fmt.Errorf("AI model returned non-OK status: %d, response: %s", resp.StatusCode, string(body))
+	}
 
-    var chatResp []model.ChatResponse
-    err = json.Unmarshal(body, &chatResp)
-    if err != nil {
-        return model.ChatResponse{}, err
-    }
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return model.ChatResponse{}, err
+	}
 
-    if len(chatResp) > 0 {
-        return chatResp[0], nil
-    }
+	var routerResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.Unmarshal(body, &routerResp); err == nil &&
+		len(routerResp.Choices) > 0 && routerResp.Choices[0].Message.Content != "" {
+		return model.ChatResponse{GeneratedText: routerResp.Choices[0].Message.Content}, nil
+	}
 
-    return model.ChatResponse{}, fmt.Errorf("no response from AI model")
+	// Keep accepting the legacy response shape so existing tests/mocks remain valid.
+	var legacyResp []model.ChatResponse
+	if err := json.Unmarshal(body, &legacyResp); err == nil &&
+		len(legacyResp) > 0 && legacyResp[0].GeneratedText != "" {
+		return legacyResp[0], nil
+	}
+
+	return model.ChatResponse{}, fmt.Errorf("AI model returned an invalid response: %s", string(body))
 }
